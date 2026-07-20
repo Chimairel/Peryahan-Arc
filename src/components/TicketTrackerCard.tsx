@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTicket } from '../context/TicketContext';
-import { Ticket, ArrowUpRight, ArrowDownRight, Settings, ShieldCheck, Recycle, Eye } from 'lucide-react';
+import { Ticket, ShieldCheck, Recycle, Eye, Edit3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { ReusableTicketsModal } from './ReusableTicketsModal';
 
 interface TicketTrackerCardProps {
@@ -20,8 +20,6 @@ export const TicketTrackerCard: React.FC<TicketTrackerCardProps> = ({
     totalRevenue,
     lastSoldTicketNum,
     adjustCurrentTicketNum,
-    setStartingTicketNum,
-    setTicketDirection,
     returnedTicketsPool,
   } = useTicket();
 
@@ -42,57 +40,55 @@ export const TicketTrackerCard: React.FC<TicketTrackerCardProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Prominent Header Banner: Starting Ticket Number & Direction Switch */}
-      <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 rounded-2xl p-4 sm:p-5 shadow-lg shadow-amber-500/10 text-slate-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-amber-300">
+      {/* Prominent Yellow Header Banner: Starting Ticket Number & Direction */}
+      <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 rounded-2xl p-4 sm:p-5 shadow-lg shadow-amber-500/10 text-slate-950 flex items-center justify-between gap-3 border border-amber-300">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-wider bg-slate-950/10 px-2 py-0.5 rounded text-slate-900">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-slate-950/15 px-2 py-0.5 rounded text-slate-950">
               SHIFT STARTING TICKET #
             </span>
             <button
               onClick={onOpenSettings}
-              className="text-xs font-bold underline hover:text-slate-800"
+              className="text-xs font-black underline hover:text-slate-800 transition flex items-center gap-0.5"
             >
-              (Edit)
+              <Edit3 className="h-3 w-3" />
+              <span>(Edit in Setup)</span>
             </button>
           </div>
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight drop-shadow-sm">
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight drop-shadow-sm text-slate-950">
               #{shift.startingTicketNum}
-            </span>
-            <span className="text-xs font-bold text-slate-800 uppercase">
-              {isAscending ? '⬆️ Counting Up (1, 2, 3...)' : '⬇️ Counting Down (100, 99, 98...)'}
             </span>
           </div>
         </div>
 
-        {/* Ascending / Descending Direction Toggle */}
-        <div className="flex items-center bg-slate-950/20 p-1 rounded-xl gap-1 border border-slate-950/10 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setTicketDirection('ascending')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-xs font-black transition ${
-              isAscending
-                ? 'bg-slate-950 text-amber-400 shadow-md'
-                : 'text-slate-900 hover:bg-slate-950/10'
-            }`}
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            <span>Ascending (1 → 2)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTicketDirection('descending')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-xs font-black transition ${
-              !isAscending
-                ? 'bg-slate-950 text-amber-400 shadow-md'
-                : 'text-slate-900 hover:bg-slate-950/10'
-            }`}
-          >
-            <ArrowDownRight className="h-4 w-4" />
-            <span>Descending (100 → 99)</span>
-          </button>
+        {/* Sleek Dark Pill Badge for Counting Mode */}
+        <div className="flex items-center gap-2 bg-slate-950 text-amber-400 px-3.5 py-2.5 rounded-2xl border border-slate-900 shadow-md">
+          {isAscending ? (
+            <>
+              <ArrowUpRight className="h-4 w-4 text-emerald-400 shrink-0" />
+              <div className="text-left">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-sans">
+                  COUNTING MODE
+                </span>
+                <span className="text-xs font-black font-mono text-amber-400">
+                  Ascending (1 → 2)
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <ArrowDownRight className="h-4 w-4 text-amber-400 shrink-0" />
+              <div className="text-left">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-sans">
+                  COUNTING MODE
+                </span>
+                <span className="text-xs font-black font-mono text-amber-400">
+                  Descending (100 → 99)
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -111,14 +107,6 @@ export const TicketTrackerCard: React.FC<TicketTrackerCardProps> = ({
               Live Ticket Counter Status
             </span>
           </div>
-
-          <button
-            onClick={onOpenSettings}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-          >
-            <Settings className="h-3.5 w-3.5 text-amber-400" />
-            <span>Shift Setup</span>
-          </button>
         </div>
 
         {/* Stats Grid */}
@@ -191,7 +179,7 @@ export const TicketTrackerCard: React.FC<TicketTrackerCardProps> = ({
             <p className="text-[10px] text-slate-400 mt-1">Gross cash revenue</p>
           </div>
 
-          {/* Reuse Pool (Replaced Spoiled Card) */}
+          {/* Reuse Pool */}
           <div className={`rounded-xl p-3 border flex flex-col justify-between transition ${
             returnedTicketsPool.length > 0
               ? 'bg-emerald-950/40 border-emerald-500/50'

@@ -7,6 +7,7 @@ import { TransactionHistory } from '../components/TransactionHistory';
 import { ShiftSummaryModal } from '../components/ShiftSummaryModal';
 import { SettingsModal } from '../components/SettingsModal';
 import { TicketReturnModal } from '../components/TicketReturnModal';
+import { ShiftHistoryList } from '../components/ShiftHistoryList';
 import { useTicket } from '../context/TicketContext';
 import {
   Ticket,
@@ -185,7 +186,7 @@ export default function Home() {
 
             {/* Ticket Counter & Starting Ticket Banner */}
             <TicketTrackerCard
-              onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenSettings={() => setActiveTab('settings')}
               onOpenSummary={() => setIsSummaryOpen(true)}
             />
 
@@ -253,9 +254,12 @@ export default function Home() {
                 onClick={() => setIsSummaryOpen(true)}
                 className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-2xl transition shadow-lg shadow-amber-500/20 text-sm uppercase tracking-wide"
               >
-                OPEN FULL SHIFT REPORT & EXPORT OPTIONS
+                END SHIFT
               </button>
             </div>
+
+            {/* Past Shifts History Log */}
+            <ShiftHistoryList />
           </div>
         )}
 
