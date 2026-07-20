@@ -31,6 +31,7 @@ export interface ShiftState {
   isShiftActive: boolean;
   spoiledTicketsCount: number;
   currencySymbol: string;
+  returnedTicketsPool: number[];
 }
 
 export interface ShiftSummary {

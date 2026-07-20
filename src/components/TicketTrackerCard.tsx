@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useTicket } from '../context/TicketContext';
-import { Ticket, ArrowUpRight, ArrowDownRight, Settings, ShieldCheck, Edit3 } from 'lucide-react';
+import { Ticket, ArrowUpRight, ArrowDownRight, Settings, ShieldCheck, Recycle, Eye } from 'lucide-react';
+import { ReusableTicketsModal } from './ReusableTicketsModal';
 
 interface TicketTrackerCardProps {
   onOpenSettings: () => void;
@@ -21,11 +22,12 @@ export const TicketTrackerCard: React.FC<TicketTrackerCardProps> = ({
     adjustCurrentTicketNum,
     setStartingTicketNum,
     setTicketDirection,
-    addSpoiledTicket,
+    returnedTicketsPool,
   } = useTicket();
 
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [newNumInput, setNewNumInput] = useState(shift.currentTicketNum.toString());
+  const [isPoolModalOpen, setIsPoolModalOpen] = useState(false);
 
   const isAscending = shift.ticketDirection === 'ascending';
 
@@ -189,19 +191,28 @@ export const TicketTrackerCard: React.FC<TicketTrackerCardProps> = ({
             <p className="text-[10px] text-slate-400 mt-1">Gross cash revenue</p>
           </div>
 
-          {/* Spoiled Tickets */}
-          <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800 flex flex-col justify-between">
+          {/* Reuse Pool (Replaced Spoiled Card) */}
+          <div className={`rounded-xl p-3 border flex flex-col justify-between transition ${
+            returnedTicketsPool.length > 0
+              ? 'bg-emerald-950/40 border-emerald-500/50'
+              : 'bg-slate-950/60 border-slate-800'
+          }`}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400">SPOILED</span>
-              <span className="text-xs font-mono font-bold text-rose-400">
-                {shift.spoiledTicketsCount}
+              <div className="flex items-center gap-1">
+                <Recycle className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-xs font-medium text-slate-300 uppercase">REUSE POOL</span>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                {returnedTicketsPool.length} pcs
               </span>
             </div>
+
             <button
-              onClick={() => addSpoiledTicket(1)}
-              className="w-full mt-2 py-1 px-2 text-[11px] font-semibold text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/40 rounded transition text-center"
+              onClick={() => setIsPoolModalOpen(true)}
+              className="w-full mt-2 py-1.5 px-2 text-[11px] font-bold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-700/50 rounded-lg transition flex items-center justify-center gap-1 shadow-sm"
             >
-              +1 Damaged Tix
+              <Eye className="h-3 w-3" />
+              <span>View Pool</span>
             </button>
           </div>
         </div>
@@ -220,6 +231,12 @@ export const TicketTrackerCard: React.FC<TicketTrackerCardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modal to view all tickets in reuse pool */}
+      <ReusableTicketsModal
+        isOpen={isPoolModalOpen}
+        onClose={() => setIsPoolModalOpen(false)}
+      />
     </div>
   );
 };

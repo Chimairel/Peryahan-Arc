@@ -18,6 +18,7 @@ const DEFAULT_SHIFT: ShiftState = {
   isShiftActive: true,
   spoiledTicketsCount: 0,
   currencySymbol: '₱',
+  returnedTicketsPool: [],
 };
 
 interface TicketContextType {
@@ -27,8 +28,9 @@ interface TicketContextType {
   totalReturnedTickets: number;
   totalRefundsAmount: number;
   lastSoldTicketNum: number;
+  returnedTicketsPool: number[];
   completeSale: (quantity: number, cashPaid: number, notes?: string) => Transaction | null;
-  processReturn: (quantity: number, reuseTicketNum?: boolean, notes?: string) => Transaction | null;
+  processReturn: (ticketNumbers: number[], notes?: string) => Transaction | null;
   voidTransaction: (id: string) => void;
   setStartingTicketNum: (num: number) => void;
   adjustCurrentTicketNum: (num: number) => void;
@@ -60,6 +62,8 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setShift({
           ...DEFAULT_SHIFT,
           ...parsed,
+          // Ensure returnedTicketsPool always exists (backwards compat)
+          returnedTicketsPool: parsed.returnedTicketsPool || [],
         });
       } else {
         setShift({
@@ -126,16 +130,52 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const totalAmount = quantity * shift.ticketPrice;
     if (cashPaid < totalAmount) return null;
 
-    const startNum = shift.currentTicketNum;
-    const endNum = isAscending
-      ? startNum + quantity - 1
-      : startNum - quantity + 1;
-    
-    const nextCurrentNum = isAscending
-      ? startNum + quantity
-      : startNum - quantity;
+    const pool = [...shift.returnedTicketsPool];
+    const poolTicketsToUse: number[] = [];
+
+    // Sort pool: ascending mode → lowest first, descending mode → highest first
+    const sortedPool = [...pool].sort((a, b) => isAscending ? a - b : b - a);
+
+    // Take tickets from the returned pool first
+    for (let i = 0; i < quantity; i++) {
+      if (sortedPool.length > 0) {
+        poolTicketsToUse.push(sortedPool.shift()!);
+      } else {
+        break;
+      }
+    }
+
+    // Remaining pool tickets that weren't used
+    const remainingPool = sortedPool;
+
+    // How many tickets still need to come from the counter
+    const fromCounter = quantity - poolTicketsToUse.length;
+
+    let counterStartNum = shift.currentTicketNum;
+    let nextCurrentNum = shift.currentTicketNum;
+
+    if (fromCounter > 0) {
+      counterStartNum = shift.currentTicketNum;
+      nextCurrentNum = isAscending
+        ? shift.currentTicketNum + fromCounter
+        : shift.currentTicketNum - fromCounter;
+    }
+
+    // For the transaction record, we record the counter range used
+    const startNum = fromCounter > 0 ? counterStartNum : (poolTicketsToUse[0] || counterStartNum);
+    const endNum = fromCounter > 0
+      ? (isAscending ? counterStartNum + fromCounter - 1 : counterStartNum - fromCounter + 1)
+      : (poolTicketsToUse[poolTicketsToUse.length - 1] || counterStartNum);
 
     const changeGiven = cashPaid - totalAmount;
+
+    // Build a note about which tickets came from pool
+    let saleNotes = notes || '';
+    if (poolTicketsToUse.length > 0) {
+      const poolLabel = poolTicketsToUse.map(n => `#${n}`).join(', ');
+      const poolNote = `[Reused returned: ${poolLabel}]`;
+      saleNotes = saleNotes ? `${saleNotes} ${poolNote}` : poolNote;
+    }
 
     const newTransaction: Transaction = {
       id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -150,12 +190,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       changeGiven,
       rideName: shift.rideName,
       status: 'completed',
-      notes,
+      notes: saleNotes || undefined,
     };
 
     setShift((prev) => ({
       ...prev,
       currentTicketNum: nextCurrentNum,
+      returnedTicketsPool: remainingPool,
       transactions: [newTransaction, ...prev.transactions],
     }));
 
@@ -170,25 +211,15 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return newTransaction;
   };
 
-  const processReturn = (quantity: number, reuseTicketNum: boolean = true, notes?: string): Transaction | null => {
-    if (quantity <= 0) return null;
+  // processReturn now accepts exact ticket numbers typed by the seller
+  const processReturn = (ticketNumbers: number[], notes?: string): Transaction | null => {
+    if (ticketNumbers.length === 0) return null;
+    const quantity = ticketNumbers.length;
     const refundAmount = quantity * shift.ticketPrice;
 
-    // Calculate ticket range returned
-    const startNum = isAscending
-      ? shift.currentTicketNum - 1
-      : shift.currentTicketNum + 1;
-    
-    const endNum = isAscending
-      ? startNum - quantity + 1
-      : startNum + quantity - 1;
-
-    // If seller chooses to reuse the returned ticket, adjust current ticket pointer back
-    const nextCurrentNum = reuseTicketNum
-      ? isAscending
-        ? shift.currentTicketNum - quantity
-        : shift.currentTicketNum + quantity
-      : shift.currentTicketNum;
+    const sorted = [...ticketNumbers].sort((a, b) => a - b);
+    const startNum = sorted[sorted.length - 1]; // highest
+    const endNum = sorted[0]; // lowest
 
     const returnTxn: Transaction = {
       id: `RET-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -204,12 +235,13 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       refundAmount,
       rideName: shift.rideName,
       status: 'completed',
-      notes: notes || 'Customer returned ticket',
+      notes: notes ? `${notes} | Tickets: ${ticketNumbers.map(n => `#${n}`).join(', ')}` : `Returned tickets: ${ticketNumbers.map(n => `#${n}`).join(', ')}`,
     };
 
+    // Add exact returned ticket numbers to the pool
     setShift((prev) => ({
       ...prev,
-      currentTicketNum: nextCurrentNum,
+      returnedTicketsPool: [...prev.returnedTicketsPool, ...ticketNumbers],
       transactions: [returnTxn, ...prev.transactions],
     }));
 
@@ -348,6 +380,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isShiftActive: true,
       spoiledTicketsCount: 0,
       currencySymbol: '₱',
+      returnedTicketsPool: [],
     };
 
     setShift(newShift);
@@ -371,6 +404,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         totalReturnedTickets,
         totalRefundsAmount,
         lastSoldTicketNum,
+        returnedTicketsPool: shift.returnedTicketsPool,
         completeSale,
         processReturn,
         voidTransaction,

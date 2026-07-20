@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTicket } from '../context/TicketContext';
-import { Undo2, X, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Undo2, X, CheckCircle2, RotateCcw, Recycle, Plus, Trash2 } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface TicketReturnModalProps {
@@ -11,22 +11,44 @@ interface TicketReturnModalProps {
 }
 
 export const TicketReturnModal: React.FC<TicketReturnModalProps> = ({ isOpen, onClose }) => {
-  const { shift, processReturn } = useTicket();
+  const { shift, processReturn, returnedTicketsPool } = useTicket();
 
-  const [quantity, setQuantity] = useState<number>(1);
-  const [reuseTicket, setReuseTicket] = useState<boolean>(true);
+  const [ticketInputs, setTicketInputs] = useState<string[]>(['']);
   const [notes, setNotes] = useState<string>('');
   const [returnedReceipt, setReturnedReceipt] = useState<Transaction | null>(null);
 
   if (!isOpen) return null;
 
+  // Parse valid ticket numbers from inputs
+  const parsedTicketNums = ticketInputs
+    .map((v) => parseInt(v, 10))
+    .filter((n) => !isNaN(n) && n > 0);
+
+  const quantity = parsedTicketNums.length;
   const refundAmount = quantity * shift.ticketPrice;
+  const hasValidTicket = quantity > 0;
+
+  const handleAddTicketInput = () => {
+    setTicketInputs((prev) => [...prev, '']);
+  };
+
+  const handleRemoveTicketInput = (index: number) => {
+    setTicketInputs((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleTicketInputChange = (index: number, value: string) => {
+    setTicketInputs((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+  };
 
   const handleConfirmReturn = (e: React.FormEvent) => {
     e.preventDefault();
-    if (quantity <= 0) return;
+    if (!hasValidTicket) return;
 
-    const txn = processReturn(quantity, reuseTicket, notes);
+    const txn = processReturn(parsedTicketNums, notes);
     if (txn) {
       setReturnedReceipt(txn);
     }
@@ -34,7 +56,7 @@ export const TicketReturnModal: React.FC<TicketReturnModalProps> = ({ isOpen, on
 
   const handleFinish = () => {
     setReturnedReceipt(null);
-    setQuantity(1);
+    setTicketInputs(['']);
     setNotes('');
     onClose();
   };
@@ -50,7 +72,7 @@ export const TicketReturnModal: React.FC<TicketReturnModalProps> = ({ isOpen, on
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Process Ticket Return</h2>
-              <p className="text-xs text-slate-400">Refund cash & adjust ticket inventory</p>
+              <p className="text-xs text-slate-400">Enter the ticket number on the returned ticket</p>
             </div>
           </div>
 
@@ -71,7 +93,7 @@ export const TicketReturnModal: React.FC<TicketReturnModalProps> = ({ isOpen, on
 
             <div>
               <h3 className="text-xl font-black text-white">Refund Completed</h3>
-              <p className="text-xs text-slate-400">Customer ticket returned</p>
+              <p className="text-xs text-slate-400">Ticket(s) added to reuse pool</p>
             </div>
 
             <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 text-left space-y-2 text-sm font-mono">
@@ -83,8 +105,11 @@ export const TicketReturnModal: React.FC<TicketReturnModalProps> = ({ isOpen, on
                 <span className="text-rose-400 font-bold">CASH REFUNDED:</span>
                 <span className="text-rose-400 font-bold">₱{returnedReceipt.refundAmount?.toLocaleString()}</span>
               </div>
-              <div className="text-[11px] text-slate-500 pt-1">
-                {reuseTicket ? '✅ Next ticket pointer updated to reuse returned ticket code.' : '⚠️ Ticket discarded (pointer unchanged).'}
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 pt-2 border-t border-slate-800">
+                <Recycle className="h-3.5 w-3.5" />
+                <span>
+                  Added to reuse pool. Next customer will automatically receive these tickets.
+                </span>
               </div>
             </div>
 
@@ -98,67 +123,91 @@ export const TicketReturnModal: React.FC<TicketReturnModalProps> = ({ isOpen, on
         ) : (
           /* Return Form */
           <form onSubmit={handleConfirmReturn} className="space-y-4">
-            {/* Quantity Returned */}
-            <div className="space-y-1">
+            {/* Ticket Number Inputs */}
+            <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
-                Number of Tickets Being Returned
+                Returned Ticket Number(s)
               </label>
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                {[1, 2, 3, 4].map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setQuantity(q)}
-                    className={`py-2 rounded-xl font-bold font-mono text-sm border transition ${
-                      quantity === q
-                        ? 'bg-rose-500 text-slate-950 border-rose-400'
-                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    {q} ticket{q > 1 ? 's' : ''}
-                  </button>
+              <p className="text-[11px] text-slate-500">
+                Type the number printed on the physical ticket being returned.
+              </p>
+
+              <div className="space-y-2">
+                {ticketInputs.map((val, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-sm">#</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={val}
+                        onChange={(e) => handleTicketInputChange(idx, e.target.value)}
+                        placeholder={`Ticket number ${idx + 1}`}
+                        className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl pl-7 pr-3 py-2.5 text-slate-100 font-mono text-lg focus:outline-none"
+                        autoFocus={idx === 0}
+                      />
+                    </div>
+                    {ticketInputs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTicketInput(idx)}
+                        className="p-2 text-slate-500 hover:text-rose-400 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)}
-                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-slate-100 font-mono text-lg focus:outline-none"
-              />
+
+              <button
+                type="button"
+                onClick={handleAddTicketInput}
+                className="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 border-dashed rounded-xl transition flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-300"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Another Ticket</span>
+              </button>
             </div>
 
             {/* Calculated Cash Refund */}
-            <div className="bg-rose-950/40 border border-rose-800/60 rounded-2xl p-4 flex items-center justify-between">
+            <div className={`border rounded-2xl p-4 flex items-center justify-between transition ${
+              hasValidTicket
+                ? 'bg-rose-950/40 border-rose-800/60'
+                : 'bg-slate-950/60 border-slate-800'
+            }`}>
               <div>
-                <span className="text-xs uppercase font-bold text-rose-400 tracking-wider block">
+                <span className={`text-xs uppercase font-bold tracking-wider block ${
+                  hasValidTicket ? 'text-rose-400' : 'text-slate-500'
+                }`}>
                   Total Cash Refund
                 </span>
                 <span className="text-xs text-slate-400">
-                  {quantity} ticket{quantity > 1 ? 's' : ''} × ₱{shift.ticketPrice}
+                  {quantity} ticket{quantity !== 1 ? 's' : ''} × ₱{shift.ticketPrice}
                 </span>
               </div>
-              <span className="text-3xl font-black font-mono text-rose-400">
+              <span className={`text-3xl font-black font-mono ${
+                hasValidTicket ? 'text-rose-400' : 'text-slate-600'
+              }`}>
                 ₱{refundAmount.toLocaleString()}
               </span>
             </div>
 
-            {/* Reuse Ticket Toggle */}
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-300">Reuse returned ticket code?</span>
-                <input
-                  type="checkbox"
-                  checked={reuseTicket}
-                  onChange={(e) => setReuseTicket(e.target.checked)}
-                  className="h-4 w-4 accent-rose-500 rounded cursor-pointer"
-                />
+            {/* Pool Info */}
+            <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-800/40 space-y-1">
+              <div className="flex items-center gap-1.5">
+                <Recycle className="h-4 w-4 text-emerald-400" />
+                <span className="text-xs font-semibold text-emerald-300">Auto-Reuse Pool</span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                {reuseTicket
-                  ? 'Yes: Rewinds current ticket counter back so the returned ticket can be sold to the next customer.'
-                  : 'No: Leaves current ticket counter as is (logs as returned revenue deduction only).'}
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Returned tickets are saved in a reuse pool. The <strong className="text-slate-300">next customer</strong> will 
+                receive these tickets first before the counter advances.
               </p>
+              {returnedTicketsPool.length > 0 && (
+                <p className="text-[11px] text-amber-400 font-mono">
+                  Currently in pool: {returnedTicketsPool.map(n => `#${n}`).join(', ')}
+                </p>
+              )}
             </div>
 
             {/* Reason / Notes optional */}
@@ -179,10 +228,20 @@ export const TicketReturnModal: React.FC<TicketReturnModalProps> = ({ isOpen, on
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full py-3.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-slate-950 font-black text-sm uppercase rounded-2xl transition shadow-lg shadow-rose-950/40 flex items-center justify-center gap-2"
+                disabled={!hasValidTicket}
+                className={`w-full py-3.5 font-black text-sm uppercase rounded-2xl transition shadow-lg flex items-center justify-center gap-2 ${
+                  hasValidTicket
+                    ? 'bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-slate-950 shadow-rose-950/40'
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 shadow-none'
+                }`}
               >
                 <RotateCcw className="h-4 w-4" />
-                <span>CONFIRM REFUND (₱{refundAmount})</span>
+                <span>
+                  {hasValidTicket
+                    ? `CONFIRM REFUND (₱${refundAmount})`
+                    : 'Enter ticket number above'
+                  }
+                </span>
               </button>
             </div>
           </form>

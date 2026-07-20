@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTicket } from '../context/TicketContext';
-import { ShoppingBag, Banknote, Calculator, CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Banknote, Calculator, CheckCircle2, RotateCcw, ArrowRight, Recycle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Transaction } from '../types';
 
@@ -11,7 +11,7 @@ interface TicketCalculatorProps {
 }
 
 export const TicketCalculator: React.FC<TicketCalculatorProps> = ({ onSaleCompleted }) => {
-  const { shift, completeSale } = useTicket();
+  const { shift, completeSale, returnedTicketsPool } = useTicket();
 
   const [quantity, setQuantity] = useState<number>(1);
   const [customQtyInput, setCustomQtyInput] = useState<string>('1');
@@ -92,6 +92,22 @@ export const TicketCalculator: React.FC<TicketCalculatorProps> = ({ onSaleComple
           ₱{pricePerTicket} / ticket
         </span>
       </div>
+
+      {/* Pool Badge */}
+      {returnedTicketsPool.length > 0 && (
+        <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-700/50 rounded-xl p-2.5">
+          <Recycle className="h-4 w-4 text-emerald-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-bold text-emerald-300 block">
+              {returnedTicketsPool.length} returned ticket{returnedTicketsPool.length > 1 ? 's' : ''} in reuse pool
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono truncate block">
+              {returnedTicketsPool.map(n => `#${n}`).join(', ')}
+            </span>
+          </div>
+          <span className="text-[10px] text-emerald-400/70 shrink-0">Next sale uses these first</span>
+        </div>
+      )}
 
       {/* Step 1: Ticket Quantity Selector */}
       <div className="space-y-2">
@@ -277,6 +293,11 @@ export const TicketCalculator: React.FC<TicketCalculatorProps> = ({ onSaleComple
                 <span className="text-emerald-400 font-bold">CHANGE GIVEN:</span>
                 <span className="text-emerald-400 font-bold">₱{lastSaleReceipt.changeGiven.toLocaleString()}</span>
               </div>
+              {lastSaleReceipt.notes && (
+                <div className="text-[11px] text-emerald-400 pt-2 border-t border-slate-800/80 font-sans">
+                  ♻️ {lastSaleReceipt.notes}
+                </div>
+              )}
             </div>
 
             <button

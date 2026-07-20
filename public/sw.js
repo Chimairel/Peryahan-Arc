@@ -1,7 +1,8 @@
-const CACHE_NAME = 'peryahan-v2';
+const CACHE_NAME = 'peryahan-v3';
 
-// Minimal pre-cache list — the rest gets cached dynamically on first visit
+// Pre-cache critical application shell assets immediately upon install
 const PRECACHE_ASSETS = [
+  '/',
   '/manifest.json',
   '/icon.svg',
 ];
@@ -10,8 +11,12 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_ASSETS))
+      .then((cache) => {
+        console.log('[SW] Pre-caching app shell for iOS & Android offline support');
+        return cache.addAll(PRECACHE_ASSETS);
+      })
       .then(() => self.skipWaiting())
+      .catch((err) => console.error('[SW] Pre-cache failed:', err))
   );
 });
 
@@ -26,64 +31,48 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Network-first for navigations, Cache-first for assets
+// Fetch: Cache-first strategy for maximum iOS Safari & Android offline reliability
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Skip caching for non-http(s) requests and browser extension resources
+  // Skip non-http(s) and external extension requests
   if (!url.protocol.startsWith('http')) return;
 
-  // Page navigation requests (HTML pages) — Network first, fall back to cache
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Cache a copy of the successful page response
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => {
-          // Offline: serve the cached page (or the cached root '/' as fallback)
-          return caches.match(event.request)
-            .then((cached) => cached || caches.match('/'));
-        })
-    );
-    return;
-  }
-
-  // Static assets (JS, CSS, images, fonts) — Cache first, fall back to network
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        // Serve from cache immediately, update in background
-        const fetchPromise = fetch(event.request)
-          .then((response) => {
-            if (response && response.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response));
+    caches.match(event.request).then((cachedResponse) => {
+      // 1. If asset or page is already in cache, serve it immediately (works 100% offline on iOS)
+      if (cachedResponse) {
+        // Optional background update if online
+        fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
             }
           })
-          .catch(() => {});
-        return cached;
+          .catch(() => {
+            // Quietly ignore network failures when offline
+          });
+
+        return cachedResponse;
       }
 
-      // Not in cache yet — fetch from network and cache it
+      // 2. Not in cache yet — fetch from network and cache for offline use
       return fetch(event.request)
-        .then((response) => {
-          // Only cache valid same-origin responses
-          if (!response || response.status !== 200) {
-            return response;
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
-          // Cache the response for offline use
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
+          return networkResponse;
         })
         .catch(() => {
-          // Asset unavailable offline — return nothing
-          return new Response('', { status: 408, statusText: 'Offline' });
+          // 3. Network failed & not in cache — fallback to cached root '/' for page navigations
+          if (event.request.mode === 'navigate') {
+            return caches.match('/') || caches.match('/manifest.json');
+          }
+          return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
         });
     })
   );
