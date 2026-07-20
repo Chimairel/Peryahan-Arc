@@ -13,14 +13,13 @@ import {
   Sparkles,
   WifiOff,
   Wifi,
-  Info,
+  ShieldCheck,
   Calculator,
   History,
   FileText,
   Settings,
   Undo2,
-  BarChart3,
-  RefreshCw
+  BarChart3
 } from 'lucide-react';
 
 type TabType = 'pos' | 'history' | 'report' | 'settings';
@@ -93,7 +92,7 @@ export default function Home() {
             {isOffline ? (
               <>
                 <WifiOff className="h-3.5 w-3.5 text-amber-400" />
-                <span>Offline</span>
+                <span>Offline Active</span>
               </>
             ) : (
               <>
@@ -162,10 +161,10 @@ export default function Home() {
       <div className="max-w-2xl mx-auto px-4 pt-4">
         {/* Offline Notice Banner */}
         {isOffline && (
-          <div className="mb-4 p-3 bg-gradient-to-r from-amber-950/80 to-slate-900 border border-amber-500/40 rounded-xl flex items-center gap-2 text-xs text-amber-200 shadow-md">
-            <Info className="h-4 w-4 text-amber-400 shrink-0" />
+          <div className="mb-4 p-3 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-amber-950/80 border border-emerald-500/40 rounded-xl flex items-center gap-2.5 text-xs text-emerald-200 shadow-md">
+            <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
             <span>
-              Operating <strong>100% offline</strong>. All tickets, returns, and revenue are saved locally on your device.
+              <strong>100% Offline Ready:</strong> App is running locally on your phone storage. You can safely close or exit the app anytime without losing ticket data.
             </span>
           </div>
         )}
