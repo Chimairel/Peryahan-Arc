@@ -329,10 +329,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const refundsAmt = activeReturns.reduce((acc, t) => acc + (t.refundAmount || t.totalAmount), 0);
     const netRevenue = grossRev - refundsAmt;
 
-    const isAsc = shift.ticketDirection === 'ascending';
-    const endingNum = netTicketsSold > 0
-      ? (isAsc ? shift.currentTicketNum - 1 : shift.currentTicketNum + 1)
-      : shift.startingTicketNum;
+    const endingNum = shift.currentTicketNum;
 
     return {
       startingTicketNum: shift.startingTicketNum,

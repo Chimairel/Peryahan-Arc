@@ -137,7 +137,7 @@ FINANCIAL:
                 {/* Summary numbers grid */}
                 <div className="grid grid-cols-3 gap-2 text-xs font-mono bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-sans">Ticket Range</span>
+                    <span className="text-[10px] text-slate-400 block font-sans">Start → Next Start</span>
                     <span className="font-bold text-amber-400">#{s.startingTicketNum} → #{s.endingTicketNum}</span>
                   </div>
                   <div>

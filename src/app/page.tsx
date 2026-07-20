@@ -224,7 +224,7 @@ export default function Home() {
 
                 <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
                   <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
-                    Ending Ticket #
+                    Next Shift Start #
                   </span>
                   <span className="text-2xl font-black font-mono text-amber-400">
                     #{summary.endingTicketNum}
